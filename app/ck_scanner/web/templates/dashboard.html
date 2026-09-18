@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>📊 ABCDE Stock Decision Intelligence Dashboard v7.5.1</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/dashboard.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>📊 ABCDE Stock Decision Intelligence Dashboard v7.5.1</h1>
+      <p class="muted">
+        SQLite source: CK/db/ck_signals.sqlite · Top 20 + Screener + Pullback
+        Score · Action Label · Unique RS
+      </p>
+      <div class="card">
+        <h3>Bộ lọc</h3>
+        <div class="filters">
+          <label
+            >Từ ngày<br /><input id="start" type="date" /><br /><select
+              id="startSelect"
+              onchange="document.getElementById('start').value = this.value"
+            >
+              <option value="">Chọn ngày</option>
+            </select></label
+          ><label
+            >Đến ngày<br /><input id="end" type="date" /><br /><select
+              id="endSelect"
+              onchange="document.getElementById('end').value = this.value"
+            >
+              <option value="">Chọn ngày</option>
+            </select></label
+          ><label>Mã<br /><input id="ticker" placeholder="HCM, VPI..." /></label
+          ><label
+            >Ngành<br /><select id="sectorFilter">
+              <option value="">Tất cả</option>
+            </select></label
+          ><label
+            >Hành động<br /><select id="actionFilter">
+              <option value="">Tất cả</option>
+            </select></label
+          ><label
+            >Breakout<br /><select id="breakoutFilter">
+              <option value="">Tất cả</option>
+              <option value="triggered">Đã vượt mốc</option>
+              <option value="waiting">Chờ vượt mốc</option>
+              <option value="missing">Thiếu dữ liệu</option>
+            </select></label
+          ><label
+            >Điểm ≥<br /><input
+              id="minScore"
+              type="number"
+              placeholder="80" /></label
+          ><label
+            >R/R ≥<br /><input
+              id="minRR"
+              type="number"
+              step="0.1"
+              placeholder="1.5" /></label
+          ><label
+            >Rủi ro ≤<br /><input
+              id="maxRisk"
+              type="number"
+              step="0.1"
+              placeholder="8" /></label
+          ><label
+            >Vol TB5 ≥<br /><input
+              id="minLiquidity"
+              type="number"
+              placeholder="1000000" /></label
+          ><label
+            >Bộ lọc gợi ý<br /><select id="presetFilter">
+              <option value="">Tất cả</option>
+              <option value="actionable">Có thể hành động</option>
+              <option value="backtest_edge">Backtest edge</option>
+              <option value="smart_market">Smart Market</option>
+<option value="quality_focus">Quality focus</option>
+<option value="low_false_break">Low false break</option>
+<option value="volman_breakout">Volman nén breakout</option>
+<option value="volman_retest">Volman retest</option>
+<option value="breakout_retest">Breakout canh retest</option>
+              <option value="pullback_good">Pullback đẹp</option>
+              <option value="accumulation_strong">Nền tích lũy mạnh</option>
+              <option value="sector_rs">Ngành/RS mạnh</option>
+              <option value="no_chase">Không mua đuổi</option>
+              <option value="trend_leader">Trend Leader</option>
+              <option value="canslim_technical">CANSLIM Technical</option>
+              <option value="vcp_compression">VCP nén giá</option>
+              <option value="retest_priority">Retest ưu tiên</option>
+            </select></label
+          ><button onclick="loadDash()">Áp dụng</button
+          ><button id="loadDataBtn" class="load" onclick="loadTodayData()">
+            Nạp giá</button
+          ><button id="scanBtn" class="load" onclick="scanNewUniverse()">
+            Quét mã mới</button
+          ><button class="secondary" onclick="resetFilter()">Reset</button
+          ><button class="secondary" onclick="clearChartFilter()">
+            Bỏ lọc biểu đồ</button
+          ><span class="muted" id="rangeText"></span>
+        </div>
+      </div>
+      <div id="modal" class="modal">
+        <div class="modalBox">
+          <h2 id="modalTitle">Đang xử lý</h2>
+          <p id="modalBody" class="muted"></p>
+          <pre id="modalLog"></pre>
+          <button onclick="hideModal()">Đóng</button>
+        </div>
+      </div>
+      <div id="healthBanner" class="healthBanner muted">
+        Đang kiểm tra trạng thái hệ thống...
+      </div>
+      <div class="card presetPanel">
+        <h3>Bộ lọc cố định gợi ý</h3>
+        <p class="muted">Top 20 = 20 mã ưu tiên theo điểm QĐ trong phạm vi filter. Bộ lọc nâng cao = toàn bộ danh sách khớp filter/preset để soi sâu, so sánh setup và xem biểu đồ.</p>
+        <div class="presetButtons">
+          <button data-preset="actionable" onclick="applyPreset('actionable')">Có thể hành động</button>
+          <button data-preset="backtest_edge" onclick="applyPreset('backtest_edge')">Backtest edge</button>
+          <button data-preset="breakout_retest" onclick="applyPreset('breakout_retest')">Breakout canh retest</button>
+          <button data-preset="pullback_good" onclick="applyPreset('pullback_good')">Pullback đẹp</button>
+          <button data-preset="accumulation_strong" onclick="applyPreset('accumulation_strong')">Nền tích lũy mạnh</button>
+          <button data-preset="sector_rs" onclick="applyPreset('sector_rs')">Ngành/RS mạnh</button>
+          <button data-preset="no_chase" onclick="applyPreset('no_chase')">Không mua đuổi</button>
+          <button data-preset="trend_leader" onclick="applyPreset('trend_leader')">Trend Leader</button>
+          <button data-preset="canslim_technical" onclick="applyPreset('canslim_technical')">CANSLIM Technical</button>
+          <button data-preset="vcp_compression" onclick="applyPreset('vcp_compression')">VCP nén giá</button>
+          <button data-preset="retest_priority" onclick="applyPreset('retest_priority')">Retest ưu tiên</button>
+          <button class="secondary" data-preset="" onclick="applyPreset('')">Tất cả</button>
+        </div>
+        <div id="presetHint" class="helpLine">Đang xem: Tất cả dữ liệu.</div>
+      </div>
+      <div class="tabs stickyTabs">
+        <button id="tabAction" class="active" onclick="showTab('action')">
+          Kế hoạch hôm nay</button
+        ><button id="tabTop" onclick="showTab('top')">
+          Top 20 hôm nay</button
+        ><button
+          class="infoBtn tabInfoBtn"
+          title="Xem hướng dẫn tab Top 20"
+          onclick="
+            event.stopPropagation();
+            showTabHelp('top');
+          "
+        >
+          ?</button
+        ><button id="tabScreener" onclick="showTab('screener')">
+          Bộ lọc nâng cao</button
+        ><button
+          class="infoBtn tabInfoBtn"
+          title="Xem hướng dẫn tab Bộ lọc nâng cao"
+          onclick="
+            event.stopPropagation();
+            showTabHelp('screener');
+          "
+        >
+          ?</button
+        ><button id="tabIchimoku" onclick="showTab('ichimoku')">Ichimoku MTF</button><button class="infoBtn tabInfoBtn" title="Xem hướng dẫn tab Ichimoku" onclick="event.stopPropagation();showTabHelp('ichimoku');">?</button><button id="tabMa20ema" onclick="showTab('ma20ema')">MA20-EMA99/200 D1</button><button id="tabSib" onclick="showTab('sib')">SIB Overview</button><button id="tabCharts" onclick="showTab('charts')">Biểu đồ</button
+        ><button
+          class="infoBtn tabInfoBtn"
+          title="Xem hướng dẫn tab Biểu đồ"
+          onclick="
+            event.stopPropagation();
+            showTabHelp('charts');
+          "
+        >
+          ?
+        </button>
+      </div>
+      <div class="grid" id="kpis"></div>
+      <div id="backtestPanel" class="card backtestPanel">Đang tải hiệu quả backtest preset...</div>
+      <div id="fixedFilterBacktestTool" class="card backtestPanel">
+        <h3>Backtest bộ lọc cố định <span class="muted">— T+3/T+5/T+10/T+20, TP +4%, SL -10%</span></h3>
+        <p class="muted">Chạy lại thống kê cho preset/bộ lọc gợi ý đang dùng, format giống Backtest Ichimoku.</p>
+        <label class="muted">Preset<br><select id="fixedBacktestPreset">
+          <option value="backtest_edge">Backtest edge</option>
+          <option value="quality_focus">Quality focus</option>
+          <option value="low_false_break">Low false break</option>
+          <option value="actionable">Có thể hành động</option>
+          <option value="smart_market">Smart Market</option>
+          <option value="breakout_retest">Breakout canh retest</option>
+          <option value="pullback_good">Pullback đẹp</option>
+          <option value="accumulation_strong">Nền tích lũy mạnh</option>
+          <option value="sector_rs">Ngành/RS mạnh</option>
+          <option value="no_chase">Không mua đuổi</option>
+          <option value="">Tất cả tín hiệu</option>
+        </select></label>
+        <label class="muted">Từ ngày<br><input id="fixedBacktestStart" type="date" value="2024-01-01" /></label>
+        <label class="muted">Đến ngày<br><input id="fixedBacktestEnd" type="date" /></label>
+        <button id="fixedBacktestBtn" class="load" onclick="runFixedFilterBacktest()">Backtest bộ lọc</button>
+        <span id="fixedBacktestMeta" class="muted"></span>
+        <div id="fixedBacktestSummary" class="helpLine"></div>
+        <div style="max-height: 300px; overflow:auto"><table id="fixedBacktestTable"></table></div>
+      </div>
+      <div id="timingPanel" class="card timingPanel">Đang tải timing mua sau khi lọc...</div>
+      <div id="sectionAction" class="section active">
+        <div class="card">
+          <h3>Kế hoạch hôm nay <span class="muted">— nhóm hành động, trigger, stoploss, target và điều kiện hủy</span></h3>
+          <div id="actionSummary" class="actionSummary helpLine">Đang tải kế hoạch hôm nay...</div>
+          <div class="actionToolbar">
+            <button id="exportTradingPlanBtn" onclick="exportTradingPlan()">Xuất Trading Plan Excel</button>
+            <span id="tradingPlanExportStatus" class="muted">Chưa xuất phiên này.</span>
+          </div>
+          <div id="actionBoard" class="actionBoard"></div>
+        </div>
+      </div>
+      <div id="sectionTop" class="section">
+        <div class="card">
+          <h3>Top 20 ưu tiên <span class="muted">— bảng gọn, bấm Chi tiết để xem đầy đủ</span></h3>
+          <div style="max-height: 620px; overflow: auto">
+            <table id="top20"></table>
+          </div>
+        </div>
+      </div>
+      <div id="sectionScreener" class="section">
+        <div class="card">
+          <h3>Kết quả lọc <span class="muted">— bảng gọn, mỗi mã mới nhất; bấm Chi tiết để xem đầy đủ</span></h3>
+          <div style="max-height: 650px; overflow: auto">
+            <table id="screener"></table>
+          </div>
+        </div>
+      </div>
+      <div id="sectionIchimoku" class="section">
+        <div class="card">
+          <h3>Ichimoku — 1H T65/K129 Breakout v1.3 <span class="muted">| 1D.1D T65/K129 Breakout v1.0</span> <span class="muted">— tab lọc riêng, chưa nhập vào rule ABCDE chính</span></h3>
+          <p class="muted">Chọn khung: 1H (hiện tại) hoặc D1 mới. Dùng chung rule Tenkan65≈Kijun129, giá sát dưới/vượt cụm. Khung còn lại là context/timing guardrail.</p>
+          <label class="muted">khung<br><select id="ichimokuTfSelect" onchange="onIchimokuTfChange()"><option value="1H">1H v1.3</option><option value="1D">D1 v1.0</option></select></label>
+          <label class="muted">Ngày Ichimoku<br><select id="ichimokuDateSelect" onchange="loadIchimoku()"><option value="">Mới nhất</option></select></label>
+          <button id="ichimokuScanBtn" class="load" onclick="scanIchimoku()">Quét Ichimoku hôm nay</button>
+          <span id="ichimokuMeta" class="muted"></span>
+          <div id="ichimokuSummary" class="helpLine"></div>
+          <div style="max-height: 650px; overflow: auto"><table id="ichimokuTable"></table></div>
+        </div>
+        <div class="card">
+          <h3>Backtest Ichimoku <span class="muted">— T+3/T+5/T+10/T+20, TP +4%, SL -10%</span></h3>
+          <p class="muted">Nhập mã cổ phiếu để backtest rule D1 close vượt cụm max(Tenkan65,Kijun129) từ ngày chọn.</p>
+          <label class="muted">Mã<br><input id="ichimokuBacktestTicker" value="VIB" placeholder="VD: VIB, VPB, SSI" style="width:120px" /></label>
+          <label class="muted">Từ ngày<br><input id="ichimokuBacktestStart" type="date" value="2024-01-01" /></label>
+          <button id="ichimokuBacktestBtn" class="load" onclick="runIchimokuBacktest()">Backtest</button>
+          <span id="ichimokuBacktestMeta" class="muted"></span>
+          <div id="ichimokuBacktestSummary" class="helpLine"></div>
+          <div style="max-height: 360px; overflow:auto"><table id="ichimokuBacktestTable"></table></div>
+        </div>
+      </div>
+      <div id="sectionMa20ema" class="section">
+        <div class="card">
+          <h3>MA20 - EMA99/EMA200 D1 <span class="muted">— module lọc đơn giản</span></h3>
+          <p class="muted">Bộ lọc: ema_gap 0.1-2% · MA20&lt;EMA cluster · Volume TB20 ≥ 1tr · Close &gt; MA20</p>
+          <label class="muted">Ngày<br><select id="ma20Date" onchange="loadMa20EmaD1()"><option value="">Đang tải...</option></select></label>
+          <span id="ma20Meta" class="muted"></span>
+          <div id="ma20Summary" class="helpLine"></div>
+          <div style="max-height: 420px; overflow:auto"><table id="ma20Table"></table></div>
+        </div>
+        <div class="card">
+          <h3>Backtest MA20 - EMA99/200 D1 <span class="muted">— TP +4%, SL -3%, phí 0.4%</span></h3>
+          <div id="ma20BacktestSummary" class="helpLine">Chưa chạy.</div>
+          <div style="max-height: 320px; overflow:auto"><table id="ma20BacktestTable"></table></div>
+        </div>
+        <div class="card">
+          <h3>Backtest MA20-EMA theo mã <span class="muted">— T+3/T+5/T+10/T+20, TP +4%, SL -3%</span></h3>
+          <label class="muted">Mã<br><input id="ma20BacktestTicker" value="VC3" placeholder="VD: VC3, VIB, CTG" style="width:120px" /></label>
+          <label class="muted">Từ ngày<br><input id="ma20BacktestStart" type="date" value="2024-01-01" /></label>
+          <button id="ma20BacktestBtn" class="load" onclick="runMa20EmaTickerBacktest()">Backtest</button>
+          <span id="ma20BacktestMeta" class="muted"></span>
+          <div id="ma20BacktestSummTicker" class="helpLine">Nhập mã và bấm Backtest.</div>
+          <div style="max-height: 360px; overflow:auto"><table id="ma20BacktestTickerTable"></table></div>
+        </div>
+      </div>
+
+      <div id="sectionSib" class="section">
+        <div class="card">
+          <h3>SIB Overview <span class="muted">— Evaluation Lab v2/v3</span></h3>
+          <label class="muted">Từ ngày<br><input id="sibFrom" type="date" value="2026-08-01"></label>
+          <label class="muted">Đến ngày<br><input id="sibTo" type="date" value="2026-09-01"></label>
+          <label class="muted">Nhóm điểm<br><select id="sibBucket"><option value="">Tất cả</option><option>90-100</option><option>80-89</option><option>70-79</option><option>&lt;70</option></select></label>
+          <label class="muted">Regime<br><select id="sibRegime"><option value="">Tất cả</option><option>UPTREND</option><option>SIDEWAY</option><option>DOWNTREND</option><option>UNKNOWN</option></select></label>
+          <label class="muted">So sánh module<br><select id="sibVariant"><option value="">Tất cả biến thể</option><option>BASELINE_ABCDE</option><option>ABCDE_TOP20</option><option>ABCDE_ICHIMOKU</option><option>ABCDE_EMA_RETEST</option><option>ABCDE_TOP20_ICHIMOKU</option><option>ABCDE_ALL_MODULES</option></select></label><button class="load" onclick="loadSibOverview()">Lọc / cập nhật</button><span id="sibMeta" class="muted"></span>
+        </div>
+        <div class="card"><h3>Hiệu quả theo module / regime <span class="muted">— Evaluation Lab v3</span></h3><div style="max-height:420px;overflow:auto"><table id="sibReportTable"></table></div></div>
+        <div class="card"><h3>Module so với hiệu quả thực tế</h3><canvas id="sibChart" height="120"></canvas></div>
+        <div class="card"><h3>Chi tiết từng tín hiệu / module</h3><div style="max-height:560px;overflow:auto"><table id="sibTradesTable"></table></div></div>
+      </div>
+      <div id="sectionCharts" class="section">
+        <div class="charts">
+          <div class="card">
+            <h3>Biến đổi theo ngày</h3>
+            <canvas id="dailyChart"></canvas>
+          </div>
+          <div class="card">
+            <h3>Theo nhãn vùng mua</h3>
+            <canvas id="labelChart"></canvas>
+          </div>
+        </div>
+        <div class="charts">
+          <div class="card">
+            <h3>Theo setup</h3>
+            <canvas id="setupChart"></canvas>
+          </div>
+          <div class="card">
+            <h3>v2.1 Sức mạnh ngành</h3>
+            <canvas id="sectorChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h3>v2.1 Top RS <span class="muted">— mặc định mỗi mã 1 dòng mới nhất</span></h3>
+          <label class="muted"><input id="rsHistoryToggle" type="checkbox" onchange="loadDash()" /> Hiện lịch sử nhiều ngày</label>
+          <div style="max-height: 320px; overflow: auto">
+            <table id="rsTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="/static/dashboard.js"></script>
+    <div
+      id="scoreModal"
+      class="modal"
+      onclick="if (event.target.id === 'scoreModal') closeScoreModal();"
+    >
+      <div class="modalBox">
+        <div id="scoreModalContent"></div>
+        <div style="text-align: right; margin-top: 12px">
+          <button
+            onclick="closeScoreModal()"
+            style="
+              padding: 10px 14px;
+              border: 0;
+              border-radius: 8px;
+              background: #1f4e78;
+              color: white;
+              cursor: pointer;
+            "
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

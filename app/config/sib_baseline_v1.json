@@ -1,0 +1,27 @@
+{
+  "model_id": "SIB_BASELINE_V1",
+  "effective_from": "2026-09-17",
+  "status": "frozen_baseline",
+  "source_scanner_version": "ABCDE_v2.0",
+  "score_columns": {
+    "A": "a_score",
+    "B": "b_score",
+    "C": "c_score",
+    "D": "d_score",
+    "E": "e_score",
+    "total": "final_score"
+  },
+  "weights": {
+    "A": 0.25,
+    "B": 0.20,
+    "C": 0.15,
+    "D": 0.20,
+    "E": 0.20
+  },
+  "source_tables": ["daily_signals", "daily_prices", "signal_outcomes"],
+  "known_limitations": [
+    "Historical daily_signals contain the existing ABCDE_v2.0 output; this manifest does not rewrite historical scores.",
+    "Outcome calculations must use only prices available after signal_date.",
+    "Financial-data availability timestamps are not yet represented in daily_signals and require a later data-lineage upgrade."
+  ]
+}

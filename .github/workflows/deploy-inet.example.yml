@@ -1,0 +1,14 @@
+# Template only: fill the exact iNET deployment command/API after selecting
+# the iNET Hosting/VPS product. Do not enable until endpoint and auth are verified.
+name: deploy-inet-example
+on:
+  workflow_dispatch:
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Deploy using iNET provider action/SSH
+#         env:
+#           INET_API_KEY: ${{ secrets.INET_API_KEY }}
+#         run: echo 'Configure exact iNET deployment operation here'
